@@ -16,7 +16,7 @@ import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 type AuthContextType = {
   user: User | null;
   loading: boolean;
-  signup: (email: string, password: string, displayName: string) => Promise<void>;
+  signup: (email: string, password: string, displayName: string) => Promise<any>;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
