@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
+    "./pages/**/*.{js,ts,jsx,tsx}",
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
@@ -12,7 +13,7 @@ module.exports = {
         'background-light': '#1F2937',
         text: '#F9FAFB',
         'text-muted': '#9CA3AF',
-      }
+      },
     },
   },
   plugins: [],
