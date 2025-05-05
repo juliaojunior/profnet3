@@ -1,0 +1,111 @@
+'use client';
+
+import { createContext, useContext, useEffect, useState } from 'react';
+import { 
+  onAuthStateChanged, 
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
+  User
+} from 'firebase/auth';
+import { auth, db } from '@/firebase/config';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+
+type AuthContextType = {
+  user: User | null;
+  loading: boolean;
+  signup: (email: string, password: string, displayName: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const signup = async (email: string, password: string, displayName: string) => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Criar perfil do usuário no Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        email: user.email,
+        displayName,
+        photoURL: user.photoURL,
+        createdAt: serverTimestamp(),
+        role: 'user',
+      });
+      
+      return user;
+    } catch (error) {
+      console.error('Erro ao criar conta:', error);
+      throw error;
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const loginWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Verificar se o usuário já existe no Firestore
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      
+      if (!userDoc.exists()) {
+        // Criar perfil do usuário no Firestore se for o primeiro login
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          createdAt: serverTimestamp(),
+          role: 'user',
+        });
+      }
+      
+      return user;
+    } catch (error) {
+      console.error('Erro ao fazer login com Google:', error);
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    return signOut(auth);
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, signup, login, loginWithGoogle, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+  }
+  return context;
+};
