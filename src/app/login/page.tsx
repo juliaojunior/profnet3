@@ -1,16 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { auth } from '@/firebase/config';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, loginWithGoogle } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -19,11 +19,11 @@ export default function Login() {
     setLoading(true);
     
     try {
-      await login(email, password);
+      await signInWithEmailAndPassword(auth, email, password);
       router.push('/profile');
     } catch (error: any) {
+      console.error('Login error:', error);
       setError('Falha no login. Verifique seu email e senha.');
-      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -34,110 +34,88 @@ export default function Login() {
     setLoading(true);
     
     try {
-      await loginWithGoogle();
+      const provider = new GoogleAuthProvider();
+      console.log("Tentando login com Google...");
+      await signInWithPopup(auth, provider);
+      console.log("Login com Google bem-sucedido!");
       router.push('/profile');
     } catch (error: any) {
-      setError('Falha no login com Google. Tente novamente.');
-      console.error(error);
+      console.error('Google login error:', error);
+      setError(`Falha no login com Google: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="max-w-md w-full space-y-8 p-8 bg-background-light rounded-lg shadow-md">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-primary">ProfNet</h1>
-          <h2 className="mt-2 text-lg text-text">Faça login na sua conta</h2>
-        </div>
+    <div className="auth-container">
+      <div className="auth-card">
+        <h1 className="auth-title">ProfNet</h1>
+        <h2 className="auth-subtitle">Faça login na sua conta</h2>
         
         {error && (
-          <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-4 py-3 rounded">
+          <div className="error-message">
             {error}
           </div>
         )}
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="email" className="block text-sm text-text-muted">
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="email" className="form-label">
               Email
             </label>
             <input
               id="email"
-              name="email"
               type="email"
-              required
-              className="w-full px-3 py-2 bg-background border border-gray-700 rounded-md text-text focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="seu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="form-input"
+              required
             />
           </div>
           
-          <div>
-            <label htmlFor="password" className="block text-sm text-text-muted">
+          <div className="form-group">
+            <label htmlFor="password" className="form-label">
               Senha
             </label>
             <input
               id="password"
-              name="password"
               type="password"
-              required
-              className="w-full px-3 py-2 bg-background border border-gray-700 rounded-md text-text focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="******"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              className="form-input"
+              required
             />
           </div>
           
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-4 py-2 bg-primary hover:bg-primary-dark rounded-md text-white font-bold transition-colors"
-            >
-              {loading ? 'Entrando...' : 'Entrar'}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn btn-primary btn-full"
+          >
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
         </form>
         
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-700"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-background-light text-text-muted">
-                Ou continue com
-              </span>
-            </div>
-          </div>
-          
-          <div className="mt-6">
-            <button
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="w-full flex justify-center items-center px-4 py-2 border border-gray-700 rounded-md shadow-sm bg-background-light hover:bg-background text-text-muted hover:text-text"
-            >
-              <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
-                <path
-                  fill="currentColor"
-                  d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032c0-3.331,2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"
-                />
-              </svg>
-              Google
-            </button>
-          </div>
+        <div className="divider-container">
+          <div className="divider-line"></div>
+          <span className="divider-text">Ou continue com</span>
+          <div className="divider-line"></div>
         </div>
         
-        <div className="text-center mt-4">
-          <p className="text-sm text-text-muted">
-            Não tem uma conta?{' '}
-            <Link href="/signup" className="text-primary hover:underline">
-              Cadastre-se
-            </Link>
-          </p>
+        <button
+          onClick={handleGoogleLogin}
+          disabled={loading}
+          className="btn btn-google btn-full"
+        >
+          <span style={{ marginRight: '8px' }}>G</span> Google
+        </button>
+        
+        <div className="text-center text-sm mt-4">
+          Não tem uma conta?{' '}
+          <Link href="/signup" className="link">
+            Cadastre-se
+          </Link>
         </div>
       </div>
     </div>
