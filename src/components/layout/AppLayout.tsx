@@ -13,6 +13,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -37,6 +38,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     
     return () => unsubscribe();
   }, [router]);
+
+  useEffect(() => {
+    // Fechar o menu mobile quando a rota mudar
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   const isActive = (path: string) => {
     return pathname === path;
@@ -77,8 +83,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-container">
+      {/* Cabeçalho móvel */}
+      <div className="mobile-header">
+        <div className="mobile-brand">ProfNet</div>
+        <button 
+          className="mobile-menu-button"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Menu"
+        >
+          {mobileMenuOpen ? (
+            // Ícone X para fechar
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            // Ícone de hambúrguer para abrir
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          )}
+        </button>
+      </div>
+      
       {/* Barra lateral */}
-      <div className="sidebar">
+      <div className={`sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <Link href="/profile" className="sidebar-brand">ProfNet</Link>
         </div>
@@ -126,7 +154,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <svg className="sidebar-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <span>Geração de Conteúdo</span>
+                <span>Geração</span>
               </Link>
             </li>
             
@@ -140,14 +168,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <svg className="sidebar-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                  <span>Dashboard Admin</span>
+                  <span>Admin</span>
                 </Link>
               </li>
             )}
+            
+            {/* Botão de logout em telas pequenas */}
+            <li className="sidebar-nav-item mobile-only">
+              <button 
+                onClick={handleLogout} 
+                className="sidebar-nav-link"
+              >
+                <svg className="sidebar-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Sair</span>
+              </button>
+            </li>
           </ul>
         </nav>
         
-        <div className="sidebar-footer">
+        <div className="sidebar-footer desktop-only">
           <button 
             onClick={handleLogout} 
             className="sidebar-footer-link"
@@ -159,6 +200,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </div>
+      
+      {/* Overlay para fechar o menu mobile quando clicado fora */}
+      {mobileMenuOpen && (
+        <div 
+          className="mobile-menu-overlay" 
+          onClick={() => setMobileMenuOpen(false)}
+        ></div>
+      )}
       
       {/* Área principal de conteúdo */}
       <div className="main-content">

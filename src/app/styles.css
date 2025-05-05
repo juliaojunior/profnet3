@@ -524,3 +524,147 @@ body {
 .message-action-icon {
   margin-right: 0.375rem;
 }
+
+
+
+/* Estilos para dispositivos móveis */
+@media (max-width: 768px) {
+  /* Layout de app */
+  .app-container {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    height: auto;
+    min-height: unset;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    top: auto;
+    z-index: 50;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+  }
+  
+  .sidebar-header {
+    display: none;
+  }
+  
+  .sidebar-nav {
+    padding: 0;
+  }
+  
+  .sidebar-nav-list {
+    display: flex;
+    justify-content: space-around;
+  }
+  
+  .sidebar-nav-item {
+    margin: 0;
+  }
+  
+  .sidebar-nav-link {
+    flex-direction: column;
+    padding: 10px 5px;
+    margin: 0;
+    border-radius: 0;
+    font-size: 0.75rem;
+  }
+  
+  .sidebar-nav-icon {
+    margin-right: 0;
+    margin-bottom: 4px;
+  }
+  
+  .sidebar-footer {
+    display: none;
+  }
+  
+  .main-content {
+    margin-left: 0;
+    padding: 1rem;
+    padding-bottom: 80px; /* Espaço para a barra de navegação inferior */
+  }
+  
+  /* Cards e grids */
+  .grid-cols-1.md\:grid-cols-2,
+  .grid-cols-1.md\:grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+  
+  .card {
+    margin-bottom: 1rem;
+  }
+  
+  .card-header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .card-body {
+    padding: 1rem;
+  }
+  
+  /* Formulários */
+  .form-input, 
+  .btn {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  /* Páginas específicas */
+  .profile-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .profile-avatar {
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+  
+  .profile-meta {
+    justify-content: center;
+  }
+  
+  /* Página de login */
+  .auth-card {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+}
+
+/* Menu de hamburger para dispositivos muito pequenos */
+@media (max-width: 480px) {
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .card-title {
+    margin-bottom: 0.5rem;
+  }
+  
+  .message-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .message-avatar {
+    margin-bottom: 0.5rem;
+  }
+  
+  .message-actions {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
+/* Melhoria de acessibilidade */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
