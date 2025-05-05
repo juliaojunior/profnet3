@@ -5,25 +5,42 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function Login() {
+export default function Signup() {
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, loginWithGoogle } = useAuth();
+  const { signup, loginWithGoogle } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    if (password !== passwordConfirm) {
+      setError('As senhas não coincidem');
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    
     setLoading(true);
     
     try {
-      await login(email, password);
+      await signup(email, password, displayName);
       router.push('/profile');
     } catch (error: any) {
-      setError('Falha no login. Verifique seu email e senha.');
-      console.error(error);
+      if (error.code === 'auth/email-already-in-use') {
+        setError('Este email já está sendo usado por outra conta');
+      } else {
+        setError('Falha ao criar conta. Tente novamente.');
+        console.error(error);
+      }
     } finally {
       setLoading(false);
     }
@@ -37,7 +54,7 @@ export default function Login() {
       await loginWithGoogle();
       router.push('/profile');
     } catch (error: any) {
-      setError('Falha no login com Google. Tente novamente.');
+      setError('Falha ao fazer login com Google. Tente novamente.');
       console.error(error);
     } finally {
       setLoading(false);
@@ -49,7 +66,7 @@ export default function Login() {
       <div className="max-w-md w-full space-y-8 p-8 bg-background-light rounded-lg shadow-md">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-primary">ProfNet</h1>
-          <h2 className="mt-2 text-lg text-text">Faça login na sua conta</h2>
+          <h2 className="mt-2 text-lg text-text">Crie sua conta</h2>
         </div>
         
         {error && (
@@ -59,6 +76,22 @@ export default function Login() {
         )}
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div>
+            <label htmlFor="displayName" className="block text-sm text-text-muted">
+              Nome completo
+            </label>
+            <input
+              id="displayName"
+              name="displayName"
+              type="text"
+              required
+              className="w-full px-3 py-2 bg-background border border-gray-700 rounded-md text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Seu nome"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </div>
+          
           <div>
             <label htmlFor="email" className="block text-sm text-text-muted">
               Email
@@ -92,12 +125,28 @@ export default function Login() {
           </div>
           
           <div>
+            <label htmlFor="passwordConfirm" className="block text-sm text-text-muted">
+              Confirme sua senha
+            </label>
+            <input
+              id="passwordConfirm"
+              name="passwordConfirm"
+              type="password"
+              required
+              className="w-full px-3 py-2 bg-background border border-gray-700 rounded-md text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="******"
+              value={passwordConfirm}
+              onChange={(e) => setPasswordConfirm(e.target.value)}
+            />
+          </div>
+          
+          <div>
             <button
               type="submit"
               disabled={loading}
               className="w-full px-4 py-2 bg-primary hover:bg-primary-dark rounded-md text-white font-bold transition-colors"
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? 'Criando conta...' : 'Criar conta'}
             </button>
           </div>
         </form>
@@ -133,9 +182,9 @@ export default function Login() {
         
         <div className="text-center mt-4">
           <p className="text-sm text-text-muted">
-            Não tem uma conta?{' '}
-            <Link href="/signup" className="text-primary hover:underline">
-              Cadastre-se
+            Já tem uma conta?{' '}
+            <Link href="/login" className="text-primary hover:underline">
+              Faça login
             </Link>
           </p>
         </div>
