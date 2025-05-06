@@ -4,6 +4,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/firebase/config';
+import ProfileAvatar from '@/components/ProfileAvatar'; // Importação do novo componente
 
 // Lista de estados do Brasil
 const estados = [
@@ -24,6 +25,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [user, setUser] = useState<any>(null);
+  const [photoURL, setPhotoURL] = useState<string | null>(null); // Estado para armazenar a URL da foto
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
@@ -40,24 +42,28 @@ export default function Profile() {
             setArea(data.area || '');
             setEstado(data.estado || '');
             setRede(data.rede || '');
+            // Usar a URL da foto do Firestore se disponível, ou do auth como fallback
+            setPhotoURL(data.photoURL || currentUser.photoURL);
           } else {
             // Se o documento não existe, inicializa com os dados do auth
             setNome(currentUser.displayName || '');
-          // Criar o documento do usuário
-          await setDoc(docRef, {
-            uid: currentUser.uid,
-            email: currentUser.email,
-            displayName: currentUser.displayName || '',
-            photoURL: currentUser.photoURL || '',
-            area: '',
-            estado: '',
-            rede: '',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            role: 'user'
-          });
-          
-          console.log("Documento do usuário criado a partir do perfil");
+            setPhotoURL(currentUser.photoURL);
+            
+            // Criar o documento do usuário
+            await setDoc(docRef, {
+              uid: currentUser.uid,
+              email: currentUser.email,
+              displayName: currentUser.displayName || '',
+              photoURL: currentUser.photoURL || '',
+              area: '',
+              estado: '',
+              rede: '',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              role: 'user'
+            });
+            
+            console.log("Documento do usuário criado a partir do perfil");
           }
         } catch (error) {
           console.error('Erro ao carregar perfil:', error);
@@ -97,9 +103,10 @@ export default function Profile() {
     }
   };
 
-  const getInitials = (name: string) => {
-    if (!name) return '?';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+  // Função para atualizar a foto de perfil no estado local após upload bem-sucedido
+  const handlePhotoUpdate = (newPhotoURL: string) => {
+    setPhotoURL(newPhotoURL);
+    setMessage({ text: 'Foto de perfil atualizada com sucesso!', type: 'success' });
   };
 
   return (
@@ -113,38 +120,44 @@ export default function Profile() {
       ) : (
         <>
           <div className="profile-header card">
-            <div className="profile-avatar">
-              {getInitials(nome)}
-            </div>
-            <div className="profile-info">
-              <h2 className="profile-name">{nome || 'Nome não definido'}</h2>
-              <p className="profile-email">{user?.email}</p>
-              <div className="profile-meta">
-                {area && (
-                  <span className="profile-meta-item">
-                    <svg className="inline-block w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                    {area}
-                  </span>
-                )}
-                {estado && (
-                  <span className="profile-meta-item">
-                    <svg className="inline-block w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {estado}
-                  </span>
-                )}
-                {rede && (
-                  <span className="profile-meta-item">
-                    <svg className="inline-block w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    Rede {rede}
-                  </span>
-                )}
+            {/* Substituir o avatar existente pelo novo componente ProfileAvatar */}
+            <div className="flex items-center">
+              <ProfileAvatar 
+                photoURL={photoURL} 
+                displayName={nome} 
+                uid={user?.uid}
+                onPhotoUpdate={handlePhotoUpdate}
+              />
+              <div className="profile-info ml-6">
+                <h2 className="profile-name">{nome || 'Nome não definido'}</h2>
+                <p className="profile-email">{user?.email}</p>
+                <div className="profile-meta">
+                  {area && (
+                    <span className="profile-meta-item">
+                      <svg className="inline-block w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                      {area}
+                    </span>
+                  )}
+                  {estado && (
+                    <span className="profile-meta-item">
+                      <svg className="inline-block w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      {estado}
+                    </span>
+                  )}
+                  {rede && (
+                    <span className="profile-meta-item">
+                      <svg className="inline-block w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      Rede {rede}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

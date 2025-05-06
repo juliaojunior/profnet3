@@ -4,17 +4,18 @@ import AppLayout from '@/components/layout/AppLayout';
 import { useState, useEffect } from 'react';
 import { collection, addDoc, query, orderBy, getDocs, updateDoc, doc, serverTimestamp, where } from 'firebase/firestore';
 import { auth, db } from '@/firebase/config';
+import { useFirestoreCache } from '@/hooks/useFirestoreCache';
 
 type Message = {
   id: string;
   content: string;
-  createdAt: Date;
+  createdAt: Date | { toDate: () => Date } | any;
   userId: string;
   userDisplayName: string;
   userPhotoURL?: string;
   likes: string[];
-  replyTo?: string; // ID da mensagem à qual esta é uma resposta
-  parentId?: string; // ID da mensagem principal da thread
+  replyTo?: string | null; // ID da mensagem à qual esta é uma resposta
+  parentId?: string | null; // ID da mensagem principal da thread
 };
 
 export default function Messages() {
@@ -31,85 +32,76 @@ export default function Messages() {
   const [parentMessages, setParentMessages] = useState<{[key: string]: Message}>({});
   const [expandedThreads, setExpandedThreads] = useState<{[key: string]: boolean}>({});
 
-  useEffect(() => {
-    fetchMessages();
-  }, []);
+  // Hook para mensagens principais (com cache)
+  const {
+    data: mainMessagesList,
+    loading: loadingMainMessages,
+    error: mainMessagesError,
+    refreshData: refreshMainMessages
+  } = useFirestoreCache<Message>(
+    db,
+    'messages',
+    [where('replyTo', '==', null), orderBy('createdAt', 'desc')],
+    []
+  );
 
-  const fetchMessages = async () => {
-    try {
-      // Buscar mensagens principais (que não são respostas)
-      const mainMessagesQuery = query(
-        collection(db, 'messages'), 
-        where('replyTo', '==', null),
-        orderBy('createdAt', 'desc')
-      );
+  // Hook para respostas (com cache)
+  const {
+    data: repliesList,
+    loading: loadingReplies,
+    error: repliesError,
+    refreshData: refreshReplies
+  } = useFirestoreCache<Message>(
+    db,
+    'messages',
+    [where('replyTo', '!=', null), orderBy('replyTo'), orderBy('createdAt', 'desc')],
+    []
+  );
+
+  // Processar os dados dos hooks de cache
+  useEffect(() => {
+    // Atualizar estado de loading e erro
+    setLoading(loadingMainMessages || loadingReplies);
+    
+    if (mainMessagesError) {
+      setError(`Erro ao carregar mensagens principais: ${mainMessagesError.message}`);
+    } else if (repliesError) {
+      setError(`Erro ao carregar respostas: ${repliesError.message}`);
+    } else {
+      setError('');
+    }
+    
+    // Processar mensagens quando ambos os dados estiverem disponíveis
+    if (mainMessagesList && repliesList) {
+      // Processar mensagens principais
+      const processedMainMessages = mainMessagesList.map(msg => ({
+        ...msg,
+        createdAt: msg.createdAt?.toDate ? msg.createdAt.toDate() : new Date(msg.createdAt),
+        likes: msg.likes || [],
+        replyTo: msg.replyTo || null,
+        parentId: msg.parentId || null
+      }));
       
-      const mainMessagesSnapshot = await getDocs(mainMessagesQuery);
-      
-      const mainMessagesList: Message[] = [];
-      mainMessagesSnapshot.forEach((doc) => {
-        const data = doc.data();
-        mainMessagesList.push({
-          id: doc.id,
-          content: data.content,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          userId: data.userId,
-          userDisplayName: data.userDisplayName,
-          userPhotoURL: data.userPhotoURL,
-          likes: data.likes || [],
-          replyTo: data.replyTo || null,
-          parentId: data.parentId || null
-        });
-      });
+      // Processar respostas
+      const processedReplies = repliesList.map(reply => ({
+        ...reply,
+        createdAt: reply.createdAt?.toDate ? reply.createdAt.toDate() : new Date(reply.createdAt),
+        likes: reply.likes || [],
+        replyTo: reply.replyTo,
+        parentId: reply.parentId || reply.replyTo
+      }));
       
       // Mapeamento de IDs de mensagens principais para as próprias mensagens
       const parentMessagesMap: {[key: string]: Message} = {};
-      mainMessagesList.forEach(msg => {
+      processedMainMessages.forEach(msg => {
         parentMessagesMap[msg.id] = msg;
       });
+      
+      // Atualizar estados
       setParentMessages(parentMessagesMap);
-      
-      // ALTERAÇÃO: Modificada a consulta para usar 'desc' em createdAt para corresponder ao índice que está sendo criado
-      const repliesQuery = query(
-        collection(db, 'messages'), 
-        where('replyTo', '!=', null),
-        orderBy('replyTo'),
-        orderBy('createdAt', 'desc') // ALTERAÇÃO: Mudado de 'asc' (implícito) para 'desc' explícito
-      );
-      
-      const repliesSnapshot = await getDocs(repliesQuery);
-      
-      const repliesList: Message[] = [];
-      repliesSnapshot.forEach((doc) => {
-        const data = doc.data();
-        repliesList.push({
-          id: doc.id,
-          content: data.content,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          userId: data.userId,
-          userDisplayName: data.userDisplayName,
-          userPhotoURL: data.userPhotoURL,
-          likes: data.likes || [],
-          replyTo: data.replyTo,
-          parentId: data.parentId || data.replyTo
-        });
-      });
-      
-      // Criar uma lista combinada organizada por threads
-      const organizedMessages = [...mainMessagesList];
-      
-      // Organizar as repostas em threads
-      setMessages(organizedMessages);
-      
-      // Armazenar todas as respostas separadamente para exibir quando necessário
-      setMessages([...mainMessagesList, ...repliesList]);
-    } catch (error) {
-      console.error('Erro ao carregar mensagens:', error);
-      setError('Não foi possível carregar as mensagens. Tente novamente mais tarde.');
-    } finally {
-      setLoading(false);
+      setMessages([...processedMainMessages, ...processedReplies]);
     }
-  };
+  }, [mainMessagesList, repliesList, loadingMainMessages, loadingReplies, mainMessagesError, repliesError]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +136,9 @@ export default function Messages() {
       });
 
       setNewMessage('');
-      fetchMessages(); // Recarregar as mensagens
+      
+      // Atualizar cache forçando uma busca fresca
+      await refreshMainMessages();
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
       setError('Não foi possível enviar a mensagem. Tente novamente.');
@@ -178,7 +172,7 @@ export default function Messages() {
         likes: updatedLikes
       });
       
-      // Atualiza o estado local
+      // Atualizar o estado local
       setMessages(prev => 
         prev.map(msg => 
           msg.id === messageId 
@@ -186,6 +180,14 @@ export default function Messages() {
             : msg
         )
       );
+      
+      // A mensagem pode ser principal ou resposta, atualizar o cache apropriado
+      const isMainMessage = !currentMessage.replyTo;
+      if (isMainMessage) {
+        refreshMainMessages();
+      } else {
+        refreshReplies();
+      }
     } catch (error) {
       console.error('Erro ao curtir mensagem:', error);
     }
@@ -235,7 +237,9 @@ export default function Messages() {
 
       setReplyingTo(null);
       setReplyContent('');
-      fetchMessages(); // Recarregar as mensagens
+      
+      // Atualizar cache forçando uma busca fresca
+      await refreshReplies();
     } catch (error) {
       console.error('Erro ao enviar resposta:', error);
       setError('Não foi possível enviar a resposta. Tente novamente.');
@@ -279,10 +283,7 @@ export default function Messages() {
     // Renderizar as threads
     return Object.entries(threads).map(([threadId, threadMessages]) => {
       const mainMessage = threadMessages[0];
-      
-      // ALTERAÇÃO: Modificado o sort para inverter a ordem novamente, já que os dados agora vêm em ordem 'desc'
       const replies = threadMessages.slice(1).sort((a, b) => 
-        // Modificado para reverter a ordem novamente para manter as mais antigas primeiro
         b.createdAt.getTime() - a.createdAt.getTime()
       );
       
