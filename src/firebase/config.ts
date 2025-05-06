@@ -1,5 +1,11 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithRedirect, 
+  signInWithPopup,
+  getRedirectResult
+} from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -17,21 +23,48 @@ console.log("Firebase config:", {
   projectId: firebaseConfig.projectId 
 });
 
-
 // Inicializar Firebase apenas se ainda não foi inicializado
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// Função de login com Google
+// Função de login com Google usando redirecionamento
 export async function loginWithGoogle() {
   try {
+    console.log('Tentando login com Google via redirecionamento...');
     const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    return result.user;
+    
+    // Adicionar escopos adicionais para melhorar a compatibilidade
+    provider.addScope('profile');
+    provider.addScope('email');
+    
+    // Configurar parâmetros personalizados
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
+    await signInWithRedirect(auth, provider);
+    // Nota: Esta função redireciona para a página de login do Google,
+    // então o código após esta linha não será executado imediatamente
+    return null;
   } catch (error) {
-    console.error('Erro no login com Google:', error);
+    console.error('Erro ao redirecionar para login com Google:', error);
+    throw error;
+  }
+}
+
+// Função para obter o resultado do login com redirecionamento
+export async function getGoogleRedirectResult() {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result) {
+      console.log('Login com Google via redirecionamento bem-sucedido!');
+      return result.user;
+    }
+    return null;
+  } catch (error) {
+    console.error('Erro ao processar resultado do login por redirecionamento:', error);
     throw error;
   }
 }

@@ -69,12 +69,12 @@ export default function Messages() {
       });
       setParentMessages(parentMessagesMap);
       
-      // Buscar respostas
+      // ALTERAÇÃO: Modificada a consulta para usar 'desc' em createdAt para corresponder ao índice que está sendo criado
       const repliesQuery = query(
         collection(db, 'messages'), 
         where('replyTo', '!=', null),
         orderBy('replyTo'),
-        orderBy('createdAt')
+        orderBy('createdAt', 'desc') // ALTERAÇÃO: Mudado de 'asc' (implícito) para 'desc' explícito
       );
       
       const repliesSnapshot = await getDocs(repliesQuery);
@@ -279,8 +279,11 @@ export default function Messages() {
     // Renderizar as threads
     return Object.entries(threads).map(([threadId, threadMessages]) => {
       const mainMessage = threadMessages[0];
+      
+      // ALTERAÇÃO: Modificado o sort para inverter a ordem novamente, já que os dados agora vêm em ordem 'desc'
       const replies = threadMessages.slice(1).sort((a, b) => 
-        a.createdAt.getTime() - b.createdAt.getTime()
+        // Modificado para reverter a ordem novamente para manter as mais antigas primeiro
+        b.createdAt.getTime() - a.createdAt.getTime()
       );
       
       return (

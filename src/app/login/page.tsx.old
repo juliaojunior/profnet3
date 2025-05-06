@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth, db } from '@/firebase/config';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth, db, loginWithGoogle, getGoogleRedirectResult } from '@/firebase/config';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function Login() {
@@ -13,6 +13,43 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // ALTERAÇÃO: Adicionado useEffect para verificar resultado do redirecionamento
+  useEffect(() => {
+    async function checkRedirectResult() {
+      try {
+        const user = await getGoogleRedirectResult();
+        if (user) {
+          console.log("Login com Google bem-sucedido!");
+          
+          // Verificar se o documento do usuário existe no Firestore
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          // Se o documento não existir, criá-lo
+          if (!userDoc.exists()) {
+            await setDoc(userDocRef, {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName || '',
+              photoURL: user.photoURL || '',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              role: 'user'
+            });
+            console.log("Documento do usuário criado no Firestore");
+          }
+          
+          router.push('/profile');
+        }
+      } catch (error) {
+        console.error('Erro ao processar resultado do login:', error);
+        setError('Falha ao processar login com Google. Tente novamente.');
+      }
+    }
+    
+    checkRedirectResult();
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,40 +67,19 @@ export default function Login() {
     }
   };
 
+  // ALTERAÇÃO: Modificado para usar a função loginWithGoogle() que agora usa redirecionamento
   const handleGoogleLogin = async () => {
     setError('');
     setLoading(true);
     
     try {
       console.log("Tentando login com Google...");
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      console.log("Login com Google bem-sucedido!");
-      
-      // Verificar se o documento do usuário existe no Firestore
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-      
-      // Se o documento não existir, criá-lo
-      if (!userDoc.exists()) {
-        await setDoc(userDocRef, {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName || '',
-          photoURL: user.photoURL || '',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          role: 'user'
-        });
-        console.log("Documento do usuário criado no Firestore");
-      }
-      
-      router.push('/profile');
+      await loginWithGoogle();
+      // Nota: O código após essa linha não será executado imediatamente
+      // devido ao redirecionamento. O resultado será processado no useEffect acima
     } catch (error: any) {
       console.error('Google login error:', error);
       setError(`Falha no login com Google: ${error.message}`);
-    } finally {
       setLoading(false);
     }
   };
