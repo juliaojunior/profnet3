@@ -12,6 +12,7 @@ type Noticia = {
   imagem?: string;
   data: Date;
   autor: string;
+  expandida?: boolean; // Nova propriedade para controlar a exibição
 };
 
 export default function News() {
@@ -34,7 +35,8 @@ export default function News() {
             conteudo: data.conteudo,
             imagem: data.imagem,
             data: data.data?.toDate() || new Date(),
-            autor: data.autor
+            autor: data.autor,
+            expandida: false // Inicialmente, nenhuma notícia está expandida
           });
         });
         
@@ -49,6 +51,17 @@ export default function News() {
 
     fetchNoticias();
   }, []);
+
+  // Função para alternar a expansão da notícia
+  const toggleExpand = (id: string) => {
+    setNoticias(prevNoticias => 
+      prevNoticias.map(noticia => 
+        noticia.id === id 
+          ? { ...noticia, expandida: !noticia.expandida } 
+          : noticia
+      )
+    );
+  };
 
   return (
     <AppLayout>
@@ -95,15 +108,30 @@ export default function News() {
                 <p className="text-text-muted text-sm mb-4">
                   {noticia.data.toLocaleDateString('pt-BR')} | {noticia.autor}
                 </p>
-                <p className="mb-4">
-                  {noticia.conteudo.length > 200 
-                    ? `${noticia.conteudo.substring(0, 200)}...` 
-                    : noticia.conteudo
+                <div className="mb-4">
+                  {noticia.expandida 
+                    ? (
+                      // Conteúdo completo
+                      <p className="transition-all duration-300 ease-in-out">
+                        {noticia.conteudo}
+                      </p>
+                    ) : (
+                      // Conteúdo truncado
+                      <p className="transition-all duration-300 ease-in-out">
+                        {noticia.conteudo.length > 200 
+                          ? `${noticia.conteudo.substring(0, 200)}...` 
+                          : noticia.conteudo
+                        }
+                      </p>
+                    )
                   }
-                </p>
+                </div>
                 {noticia.conteudo.length > 200 && (
-                  <button className="text-primary hover:text-primary-dark hover:underline">
-                    Ler mais
+                  <button 
+                    onClick={() => toggleExpand(noticia.id)}
+                    className="text-primary hover:text-primary-dark hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-colors"
+                  >
+                    {noticia.expandida ? 'Mostrar menos' : 'Ler mais'}
                   </button>
                 )}
               </div>
