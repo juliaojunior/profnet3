@@ -2,6 +2,7 @@
 
 import AppLayout from '@/components/layout/AppLayout';
 import { useState } from 'react';
+import { generateContent } from '@/services/openai';
 
 type ContentType = 'plano-aula' | 'plano-curso' | 'lista-exercicios' | 'projeto-pedagogico';
 
@@ -44,162 +45,118 @@ export default function ContentGenerator() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+
   const handleGenerateContent = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+  
     if (!contentType) return;
-    
+  
     setGenerating(true);
     setGeneratedContent('');
+  
+    try {
+      let prompt = '';
     
-    // Aqui você implementaria a chamada para a API da OpenAI
-    // Por enquanto, simulamos com um timeout
-    setTimeout(() => {
-      let content = '';
-      
+      // Construir o prompt de acordo com o tipo de conteúdo
       switch (contentType) {
         case 'plano-aula':
-          content = `# Plano de Aula: ${formData.temaAula}
-
-**Disciplina:** ${formData.disciplina}
-**Série/Ano:** ${formData.serieAno}
-**Duração:** ${formData.duracao}
-
-## Objetivos
-${formData.objetivos}
-
-## Conteúdo Programático
-1. Introdução ao tema
-2. Desenvolvimento dos conceitos principais
-3. Atividades práticas
-4. Avaliação da aprendizagem
-
-## Recursos Necessários
-${formData.recursos}
-
-## Metodologia
-- Aula expositiva dialogada
-- Atividades em grupo
-- Exercícios individuais
-
-## Avaliação
-- Participação nas atividades
-- Resolução dos exercícios propostos
-`;
+          prompt = `Crie um plano de aula completo em markdown com o seguinte formato:
+            Disciplina: ${formData.disciplina}
+            Série/Ano: ${formData.serieAno}
+            Tema da Aula: ${formData.temaAula}
+            Duração: ${formData.duracao}
+            Objetivos: ${formData.objetivos}
+            Recursos Necessários: ${formData.recursos}
+            
+            O plano deve incluir:
+            1. Título e informações básicas
+            2. Objetivos de aprendizagem claros
+            3. Conteúdo programático detalhado
+            4. Metodologia de ensino
+            5. Recursos necessários
+            6. Desenvolvimento da aula (introdução, desenvolvimento e conclusão)
+            7. Avaliação da aprendizagem
+            8. Possíveis adaptações para alunos com necessidades especiais`;
           break;
           
         case 'plano-curso':
-          content = `# Plano de Curso: ${formData.disciplina}
-
-**Disciplina:** ${formData.disciplina}
-**Série/Ano:** ${formData.serieAno}
-**Carga Horária:** ${formData.cargaHoraria}
-
-## Ementa
-${formData.ementa}
-
-## Objetivos Gerais
-${formData.objetivosGerais}
-
-## Unidades de Ensino
-1. Unidade I - Introdução
-2. Unidade II - Conceitos Fundamentais
-3. Unidade III - Aplicações Práticas
-4. Unidade IV - Avaliação e Projetos
-
-## Metodologia
-- Aulas expositivas
-- Seminários
-- Atividades práticas
-- Projetos interdisciplinares
-
-## Avaliação
-- Provas escritas
-- Trabalhos em grupo
-- Apresentações
-- Projeto final
-`;
-          break;
+          prompt = `Elabore um plano de curso completo em markdown com o seguinte formato:
+            Disciplina: ${formData.disciplina}
+            Série/Ano: ${formData.serieAno}
+            Carga Horária Total: ${formData.cargaHoraria}
+            Ementa: ${formData.ementa}
+            Objetivos Gerais: ${formData.objetivosGerais}
           
+            O plano deve incluir:
+            1. Título e identificação da disciplina
+            2. Ementa completa
+            3. Objetivos gerais e específicos
+            4. Unidades de ensino detalhadas
+            5. Conteúdo programático organizado por unidades
+            6. Metodologia de ensino
+            7. Critérios de avaliação
+            8. Cronograma sugerido
+            9. Bibliografia básica e complementar`;
+          break;
+        
         case 'lista-exercicios':
-          content = `# Lista de Exercícios: ${formData.conteudo}
-
-**Disciplina:** ${formData.disciplina}
-**Série/Ano:** ${formData.serieAno}
-**Nível de Dificuldade:** ${formData.nivelDificuldade}
-
-## Exercícios
-
-1. Lorem ipsum dolor sit amet, consectetur adipiscing elit?
-   a) Opção 1
-   b) Opção 2
-   c) Opção 3
-   d) Opção 4
-
-2. Suspendisse potenti. Nulla facilisi. Etiam bibendum justo eget odio semper?
-   a) Alternativa A
-   b) Alternativa B
-   c) Alternativa C
-   d) Alternativa D
-
-3. Mauris vehicula, eros a tempor tincidunt, velit odio feugiat nunc?
-   a) Resposta 1
-   b) Resposta 2
-   c) Resposta 3
-   d) Resposta 4
-
-4. Cras ultricies ligula sed magna dictum porta?
-   a) Opção A
-   b) Opção B
-   c) Opção C
-   d) Opção D
-
-5. Vestibulum ac diam sit amet quam vehicula elementum sed sit amet dui?
-   a) Alternativa 1
-   b) Alternativa 2
-   c) Alternativa 3
-   d) Alternativa 4
-`;
-          break;
+          prompt = `Crie uma lista de exercícios completa em markdown com o seguinte formato:
+            Disciplina: ${formData.disciplina}
+            Série/Ano: ${formData.serieAno}
+            Conteúdo: ${formData.conteudo}
+            Número de Questões: ${formData.numQuestoes}
+            Nível de Dificuldade: ${formData.nivelDificuldade}
           
+            A lista deve incluir:
+            1. Título e identificação da atividade
+            2. Instruções para os alunos
+            3. ${formData.numQuestoes} questões variadas sobre ${formData.conteudo}
+            4. Mistura de questões de múltipla escolha e discursivas
+            5. Gabarito com as respostas corretas ao final
+          
+            Lembre-se que o nível é ${formData.nivelDificuldade}, então adapte a complexidade das questões de acordo.`;
+          break;
+        
         case 'projeto-pedagogico':
-          content = `# Projeto Pedagógico: ${formData.tituloProjeto}
-
-**Título:** ${formData.tituloProjeto}
-**Público-Alvo:** ${formData.publicoAlvo}
-**Duração:** ${formData.duracaoProjeto}
-
-## Objetivos
-${formData.objetivosProjeto}
-
-## Justificativa
-Este projeto se justifica pela necessidade de proporcionar aos alunos uma experiência significativa de aprendizagem, conectando os conteúdos teóricos com a prática.
-
-## Metodologia
-${formData.metodologia}
-
-## Recursos Necessários
-${formData.recursosProjeto}
-
-## Cronograma
-1. Primeira semana: Apresentação do projeto e formação dos grupos
-2. Segunda semana: Pesquisa e coleta de dados
-3. Terceira semana: Desenvolvimento das atividades
-4. Quarta semana: Finalização e apresentação dos resultados
-
-## Avaliação
-- Participação individual
-- Trabalho em equipe
-- Qualidade dos materiais produzidos
-- Apresentação final
-`;
+          prompt = `Desenvolva um projeto pedagógico completo em markdown com o seguinte formato:
+            Título do Projeto: ${formData.tituloProjeto}
+            Público-Alvo: ${formData.publicoAlvo}
+            Duração: ${formData.duracaoProjeto}
+            Objetivos: ${formData.objetivosProjeto}
+            Recursos Necessários: ${formData.recursosProjeto}
+            Metodologia: ${formData.metodologia}
+          
+            O projeto deve incluir:
+            1. Título e resumo do projeto
+            2. Justificativa da relevância
+            3. Objetivos gerais e específicos
+            4. Público-alvo detalhado
+            5. Metodologia de trabalho
+            6. Recursos necessários
+            7. Cronograma detalhado de atividades
+            8. Formas de avaliação
+            9. Resultados esperados
+            10. Referências`;
           break;
       }
-      
+
+
+   // Chamar a API da OpenAI
+      const content = await generateContent({
+        prompt,
+        maxTokens: 2000, // Aumentado para conteúdos mais detalhados
+        temperature: 0.7, // Equilíbrio entre criatividade e precisão
+      });
+    
       setGeneratedContent(content);
+    } catch (error: any) {
+      console.error('Erro na geração de conteúdo:', error);
+      alert(`Erro ao gerar conteúdo: ${error.message}`);
+    } finally {
       setGenerating(false);
-    }, 2000);
+    }
   };
+
 
   return (
     <AppLayout>

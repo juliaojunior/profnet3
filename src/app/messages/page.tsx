@@ -1,10 +1,13 @@
 'use client';
 
 import AppLayout from '@/components/layout/AppLayout';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, query, orderBy, getDocs, updateDoc, doc, serverTimestamp, where } from 'firebase/firestore';
 import { auth, db } from '@/firebase/config';
 import { useFirestoreCache } from '@/hooks/useFirestoreCache';
+// Importações de componentes de animação
+import FadeIn from '@/components/animations/FadeIn';
+import SlideIn from '@/components/animations/SlideIn';
 
 type Message = {
   id: string;
@@ -281,85 +284,67 @@ export default function Messages() {
     });
     
     // Renderizar as threads
-    return Object.entries(threads).map(([threadId, threadMessages]) => {
+    return Object.entries(threads).map(([threadId, threadMessages], index) => {
       const mainMessage = threadMessages[0];
       const replies = threadMessages.slice(1).sort((a, b) => 
         b.createdAt.getTime() - a.createdAt.getTime()
       );
       
       return (
-        <div key={threadId} className="message-thread mb-6">
-          {/* Mensagem principal */}
-          <div className="message-card">
-            <div className="message-header">
-              {mainMessage.userPhotoURL ? (
-                <img 
-                  src={mainMessage.userPhotoURL} 
-                  alt={mainMessage.userDisplayName}
-                  className="message-avatar"
-                />
-              ) : (
-                <div className="message-avatar">
-                  {getInitials(mainMessage.userDisplayName)}
+        <SlideIn key={threadId} delay={index * 0.05} direction="up">
+          <div className="message-thread mb-6">
+            {/* Mensagem principal */}
+            <div className="message-card">
+              <div className="message-header">
+                {mainMessage.userPhotoURL ? (
+                  <img 
+                    src={mainMessage.userPhotoURL} 
+                    alt={mainMessage.userDisplayName}
+                    className="message-avatar"
+                  />
+                ) : (
+                  <div className="message-avatar">
+                    {getInitials(mainMessage.userDisplayName)}
+                  </div>
+                )}
+                <div className="message-info">
+                  <h3 className="message-author">{mainMessage.userDisplayName}</h3>
+                  <span className="message-date">
+                    {mainMessage.createdAt.toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
                 </div>
-              )}
-              <div className="message-info">
-                <h3 className="message-author">{mainMessage.userDisplayName}</h3>
-                <span className="message-date">
-                  {mainMessage.createdAt.toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </span>
               </div>
-            </div>
-            
-            <p className="message-content">{mainMessage.content}</p>
-            
-            <div className="message-actions">
-              <button 
-                onClick={() => handleLikeMessage(mainMessage.id)}
-                className={`message-action ${mainMessage.likes.includes(auth.currentUser?.uid || '') ? 'liked' : ''}`}
-              >
-                <svg 
-                  className="message-action-icon" 
-                  width="20" 
-                  height="20" 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  fill={mainMessage.likes.includes(auth.currentUser?.uid || '') ? "currentColor" : "none"}
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-                {mainMessage.likes.length > 0 && mainMessage.likes.length}
-              </button>
               
-              <button 
-                onClick={() => handleReplyToMessage(mainMessage.id)}
-                className={`message-action ${replyingTo === mainMessage.id ? 'text-primary' : ''}`}
-              >
-                <svg 
-                  className="message-action-icon" 
-                  width="20" 
-                  height="20" 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                </svg>
-                Responder
-              </button>
+              <p className="message-content">{mainMessage.content}</p>
               
-              {replies.length > 0 && (
+              <div className="message-actions">
                 <button 
-                  onClick={() => toggleThread(mainMessage.id)}
-                  className="message-action"
+                  onClick={() => handleLikeMessage(mainMessage.id)}
+                  className={`message-action ${mainMessage.likes.includes(auth.currentUser?.uid || '') ? 'liked' : ''}`}
+                >
+                  <svg 
+                    className="message-action-icon" 
+                    width="20" 
+                    height="20" 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    fill={mainMessage.likes.includes(auth.currentUser?.uid || '') ? "currentColor" : "none"}
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                  {mainMessage.likes.length > 0 && mainMessage.likes.length}
+                </button>
+                
+                <button 
+                  onClick={() => handleReplyToMessage(mainMessage.id)}
+                  className={`message-action ${replyingTo === mainMessage.id ? 'text-primary' : ''}`}
                 >
                   <svg 
                     className="message-action-icon" 
@@ -370,176 +355,212 @@ export default function Messages() {
                     viewBox="0 0 24 24" 
                     stroke="currentColor"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                   </svg>
-                  {expandedThreads[mainMessage.id] ? 'Ocultar respostas' : `Ver ${replies.length} resposta${replies.length > 1 ? 's' : ''}`}
+                  Responder
                 </button>
+                
+                {replies.length > 0 && (
+                  <button 
+                    onClick={() => toggleThread(mainMessage.id)}
+                    className="message-action"
+                  >
+                    <svg 
+                      className="message-action-icon" 
+                      width="20" 
+                      height="20" 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                    {expandedThreads[mainMessage.id] ? 'Ocultar respostas' : `Ver ${replies.length} resposta${replies.length > 1 ? 's' : ''}`}
+                  </button>
+                )}
+              </div>
+              
+              {/* Formulário de resposta */}
+              {replyingTo === mainMessage.id && (
+                <FadeIn>
+                  <div className="reply-form mt-4 pl-4 border-l-2 border-primary-dark">
+                    <div className="flex items-start">
+                      <div className="message-avatar mr-2" style={{ width: '2rem', height: '2rem', fontSize: '0.75rem' }}>
+                        {auth.currentUser?.photoURL ? (
+                          <img 
+                            src={auth.currentUser.photoURL} 
+                            alt="Você" 
+                            className="w-full h-full rounded-full"
+                          />
+                        ) : (
+                          getInitials(auth.currentUser?.displayName || 'Você')
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <textarea
+                          value={replyContent}
+                          onChange={(e) => setReplyContent(e.target.value)}
+                          placeholder={`Responder a ${mainMessage.userDisplayName}...`}
+                          className="message-textarea text-sm"
+                          rows={2}
+                          maxLength={maxCharCount}
+                        />
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="text-xs text-text-muted">
+                            {replyContent.length}/{maxCharCount}
+                          </span>
+                          <div className="space-x-2">
+                            <button
+                              onClick={() => setReplyingTo(null)}
+                              className="px-3 py-1 text-sm text-text-muted hover:text-text bg-background hover:bg-background-lighter rounded"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={() => handleSendReply(mainMessage.id)}
+                              disabled={sending || !replyContent.trim() || replyContent.length > maxCharCount}
+                              className="px-3 py-1 text-sm bg-primary hover:bg-primary-dark text-white rounded disabled:opacity-50"
+                            >
+                              {sending ? 'Enviando...' : 'Responder'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </FadeIn>
               )}
             </div>
             
-            {/* Formulário de resposta */}
-            {replyingTo === mainMessage.id && (
-              <div className="reply-form mt-4 pl-4 border-l-2 border-primary-dark">
-                <div className="flex items-start">
-                  <div className="message-avatar mr-2" style={{ width: '2rem', height: '2rem', fontSize: '0.75rem' }}>
-                    {auth.currentUser?.photoURL ? (
-                      <img 
-                        src={auth.currentUser.photoURL} 
-                        alt="Você" 
-                        className="w-full h-full rounded-full"
-                      />
-                    ) : (
-                      getInitials(auth.currentUser?.displayName || 'Você')
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <textarea
-                      value={replyContent}
-                      onChange={(e) => setReplyContent(e.target.value)}
-                      placeholder={`Responder a ${mainMessage.userDisplayName}...`}
-                      className="message-textarea text-sm"
-                      rows={2}
-                      maxLength={maxCharCount}
-                    />
-                    <div className="flex justify-between items-center mt-2">
-                      <span className="text-xs text-text-muted">
-                        {replyContent.length}/{maxCharCount}
-                      </span>
-                      <div className="space-x-2">
-                        <button
-                          onClick={() => setReplyingTo(null)}
-                          className="px-3 py-1 text-sm text-text-muted hover:text-text bg-background hover:bg-background-lighter rounded"
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          onClick={() => handleSendReply(mainMessage.id)}
-                          disabled={sending || !replyContent.trim() || replyContent.length > maxCharCount}
-                          className="px-3 py-1 text-sm bg-primary hover:bg-primary-dark text-white rounded disabled:opacity-50"
-                        >
-                          {sending ? 'Enviando...' : 'Responder'}
-                        </button>
+            {/* Respostas */}
+            {expandedThreads[mainMessage.id] && replies.length > 0 && (
+              <FadeIn>
+                <div className="replies-container pl-8 mt-2 space-y-2">
+                  {replies.map((reply, replyIndex) => (
+                    <SlideIn key={reply.id} delay={replyIndex * 0.03} direction="left">
+                      <div className="message-card bg-opacity-80">
+                        <div className="message-header">
+                          {reply.userPhotoURL ? (
+                            <img 
+                              src={reply.userPhotoURL} 
+                              alt={reply.userDisplayName}
+                              className="message-avatar"
+                              style={{ width: '2rem', height: '2rem' }}
+                            />
+                          ) : (
+                            <div className="message-avatar" style={{ width: '2rem', height: '2rem', fontSize: '0.75rem' }}>
+                              {getInitials(reply.userDisplayName)}
+                            </div>
+                          )}
+                          <div className="message-info">
+                            <h3 className="message-author">{reply.userDisplayName}</h3>
+                            <span className="message-date">
+                              {reply.createdAt.toLocaleDateString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <p className="message-content">{reply.content}</p>
+                        
+                        <div className="message-actions">
+                          <button 
+                            onClick={() => handleLikeMessage(reply.id)}
+                            className={`message-action ${reply.likes.includes(auth.currentUser?.uid || '') ? 'liked' : ''}`}
+                          >
+                            <svg 
+                              className="message-action-icon" 
+                              width="20" 
+                              height="20" 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              fill={reply.likes.includes(auth.currentUser?.uid || '') ? "currentColor" : "none"}
+                              viewBox="0 0 24 24" 
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                            </svg>
+                            {reply.likes.length > 0 && reply.likes.length}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </SlideIn>
+                  ))}
                 </div>
-              </div>
+              </FadeIn>
             )}
           </div>
-          
-          {/* Respostas */}
-          {expandedThreads[mainMessage.id] && replies.length > 0 && (
-            <div className="replies-container pl-8 mt-2 space-y-2">
-              {replies.map((reply) => (
-                <div key={reply.id} className="message-card bg-opacity-80">
-                  <div className="message-header">
-                    {reply.userPhotoURL ? (
-                      <img 
-                        src={reply.userPhotoURL} 
-                        alt={reply.userDisplayName}
-                        className="message-avatar"
-                        style={{ width: '2rem', height: '2rem' }}
-                      />
-                    ) : (
-                      <div className="message-avatar" style={{ width: '2rem', height: '2rem', fontSize: '0.75rem' }}>
-                        {getInitials(reply.userDisplayName)}
-                      </div>
-                    )}
-                    <div className="message-info">
-                      <h3 className="message-author">{reply.userDisplayName}</h3>
-                      <span className="message-date">
-                        {reply.createdAt.toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <p className="message-content">{reply.content}</p>
-                  
-                  <div className="message-actions">
-                    <button 
-                      onClick={() => handleLikeMessage(reply.id)}
-                      className={`message-action ${reply.likes.includes(auth.currentUser?.uid || '') ? 'liked' : ''}`}
-                    >
-                      <svg 
-                        className="message-action-icon" 
-                        width="20" 
-                        height="20" 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        fill={reply.likes.includes(auth.currentUser?.uid || '') ? "currentColor" : "none"}
-                        viewBox="0 0 24 24" 
-                        stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                      {reply.likes.length > 0 && reply.likes.length}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        </SlideIn>
       );
     });
   };
 
   return (
     <AppLayout>
-      <h1 className="text-3xl font-bold mb-6 text-primary">Mensagens</h1>
+      <SlideIn>
+        <h1 className="text-3xl font-bold mb-6 text-primary">Mensagens</h1>
+      </SlideIn>
       
       {error && (
-        <div className="error-message mb-6">
-          <svg className="error-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
-          {error}
-        </div>
+        <FadeIn>
+          <div className="error-message mb-6">
+            <svg className="error-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            {error}
+          </div>
+        </FadeIn>
       )}
       
-      <div className="message-compose">
-        <form onSubmit={handleSendMessage}>
-          <textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="O que você está pensando?"
-            className="message-textarea"
-            maxLength={maxCharCount}
-          />
-          <div className="message-actions">
-            <span className={`character-count ${newMessage.length > maxCharCount ? 'limit' : ''}`}>
-              {newMessage.length}/{maxCharCount}
-            </span>
-            <button
-              type="submit"
-              disabled={sending || !newMessage.trim() || newMessage.length > maxCharCount}
-              className="btn btn-primary"
-            >
-              {sending ? 'Enviando...' : 'Enviar'}
-            </button>
-          </div>
-        </form>
-      </div>
+      <FadeIn delay={0.1}>
+        <div className="message-compose">
+          <form onSubmit={handleSendMessage}>
+            <textarea
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="O que você está pensando?"
+              className="message-textarea"
+              maxLength={maxCharCount}
+            />
+            <div className="message-actions">
+              <span className={`character-count ${newMessage.length > maxCharCount ? 'limit' : ''}`}>
+                {newMessage.length}/{maxCharCount}
+              </span>
+              <button
+                type="submit"
+                disabled={sending || !newMessage.trim() || newMessage.length > maxCharCount}
+                className="btn btn-primary"
+              >
+                {sending ? 'Enviando...' : 'Enviar'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </FadeIn>
       
       {loading ? (
-        <div className="flex justify-center items-center h-32">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
+        <FadeIn delay={0.2}>
+          <div className="flex justify-center items-center h-32">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        </FadeIn>
       ) : messages.length === 0 ? (
-        <div className="text-center py-8 text-text-muted">
-          <svg className="mx-auto h-12 w-12 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
-          <p>Nenhuma mensagem encontrada.</p>
-          <p className="mt-2">Seja o primeiro a compartilhar algo com a comunidade!</p>
-        </div>
+        <FadeIn delay={0.2}>
+          <div className="text-center py-8 text-text-muted">
+            <svg className="mx-auto h-12 w-12 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+            <p>Nenhuma mensagem encontrada.</p>
+            <p className="mt-2">Seja o primeiro a compartilhar algo com a comunidade!</p>
+          </div>
+        </FadeIn>
       ) : (
         <div>
           {renderMessages()}
