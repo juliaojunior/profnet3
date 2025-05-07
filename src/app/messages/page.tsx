@@ -5,9 +5,10 @@ import { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, query, orderBy, getDocs, updateDoc, doc, serverTimestamp, where } from 'firebase/firestore';
 import { auth, db } from '@/firebase/config';
 import { useFirestoreCache } from '@/hooks/useFirestoreCache';
-// Importações de componentes de animação
 import FadeIn from '@/components/animations/FadeIn';
 import SlideIn from '@/components/animations/SlideIn';
+import TextWithMentions from '@/components/TextWithMentions';
+import MentionSuggestions from '@/components/MentionSuggestions';
 
 type Message = {
   id: string;
@@ -28,6 +29,10 @@ export default function Messages() {
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const maxCharCount = 400;
+  
+  // Refs para os campos de texto
+  const newMessageInputRef = useRef<HTMLTextAreaElement>(null);
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
   
   // Estados para resposta
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -321,7 +326,9 @@ export default function Messages() {
                 </div>
               </div>
               
-              <p className="message-content">{mainMessage.content}</p>
+              <div className="message-content">
+                <TextWithMentions text={mainMessage.content} />
+              </div>
               
               <div className="message-actions">
                 <button 
@@ -397,14 +404,20 @@ export default function Messages() {
                           getInitials(auth.currentUser?.displayName || 'Você')
                         )}
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 relative">
                         <textarea
+                          ref={replyInputRef}
                           value={replyContent}
                           onChange={(e) => setReplyContent(e.target.value)}
                           placeholder={`Responder a ${mainMessage.userDisplayName}...`}
                           className="message-textarea text-sm"
                           rows={2}
                           maxLength={maxCharCount}
+                        />
+                        <MentionSuggestions 
+                          text={replyContent} 
+                          onSelectUser={(text) => setReplyContent(text)} 
+                          inputRef={replyInputRef} 
                         />
                         <div className="flex justify-between items-center mt-2">
                           <span className="text-xs text-text-muted">
@@ -467,7 +480,9 @@ export default function Messages() {
                           </div>
                         </div>
                         
-                        <p className="message-content">{reply.content}</p>
+                        <div className="message-content">
+                          <TextWithMentions text={reply.content} />
+                        </div>
                         
                         <div className="message-actions">
                           <button 
@@ -520,14 +535,20 @@ export default function Messages() {
       )}
       
       <FadeIn delay={0.1}>
-        <div className="message-compose">
+        <div className="message-compose relative">
           <form onSubmit={handleSendMessage}>
             <textarea
+              ref={newMessageInputRef}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="O que você está pensando?"
               className="message-textarea"
               maxLength={maxCharCount}
+            />
+            <MentionSuggestions 
+              text={newMessage} 
+              onSelectUser={(text) => setNewMessage(text)} 
+              inputRef={newMessageInputRef} 
             />
             <div className="message-actions">
               <span className={`character-count ${newMessage.length > maxCharCount ? 'limit' : ''}`}>
