@@ -417,7 +417,7 @@ export default function Messages() {
                         <MentionSuggestions 
                           text={replyContent} 
                           onSelectUser={(text) => setReplyContent(text)} 
-                          inputRef={replyInputRef} 
+                          inputRef={replyInputRef as React.RefObject<HTMLTextAreaElement>}
                         />
                         <div className="flex justify-between items-center mt-2">
                           <span className="text-xs text-text-muted">
@@ -548,7 +548,7 @@ export default function Messages() {
             <MentionSuggestions 
               text={newMessage} 
               onSelectUser={(text) => setNewMessage(text)} 
-              inputRef={newMessageInputRef} 
+              inputRef={replyInputRef as React.RefObject<HTMLTextAreaElement>}
             />
             <div className="message-actions">
               <span className={`character-count ${newMessage.length > maxCharCount ? 'limit' : ''}`}>
